@@ -26,3 +26,25 @@ print("myvar:", myvar)
 # if = 100
 #   print(if)   
 #    nice try to use reserved keywords as variable names        
+
+
+
+#variable name can be written as camel case or snake_case or pascal case
+#Camel Case
+myVariableName = "Camel Case"
+print(myVariableName)
+#Snake Case
+my_variable_name = "Snake Case"
+print(my_variable_name)
+#Pascal Case
+MyVariableName = "Pascal Case"
+print(MyVariableName)
+
+
+#5. Variables must be assigned a value before they are used
+uninitialized_var = 70
+print("Uninitialized variable assigned value:", uninitialized_var)
+# The following line would cause an error if uncommented
+
+# print("Uninitialized variable:", uninitialized_var)
+#   because we have assigned value to uninitialized_var before using it now
