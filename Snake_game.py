@@ -73,6 +73,7 @@ class Direction:
 
 class SnakeGame:
     def __init__(self):
+        self.wrap_mode = False  # False = classic walls, True = wrap-around
         self.reset_game()
     
     def reset_game(self):
@@ -80,26 +81,50 @@ class SnakeGame:
         self.snake = deque([(GRID_WIDTH // 2, GRID_HEIGHT // 2)])
         self.direction = Direction.RIGHT
         self.next_direction = Direction.RIGHT
+        self.score = 0
         self.food = self.spawn_food()
         self.bonus = None
         self.bonus_timer = 0
         self.next_bonus_score = 50
-        self.score = 0
         self.game_over = False
     
+    def get_spawn_margin(self):
+        """Return current safe margin from borders for spawning items."""
+        base_margin = max(2, min(GRID_WIDTH, GRID_HEIGHT) // 4)  # start easy, away from edges
+        # Reduce margin every 50 points until minimum 1
+        margin = max(1, base_margin - (self.score // 50))
+        # Ensure margin does not exceed playable area
+        max_allowed = min(GRID_WIDTH // 2 - 1, GRID_HEIGHT // 2 - 1)
+        return min(margin, max_allowed)
+
     def spawn_food(self):
-        """Spawn food at a random location not occupied by snake"""
+        """Spawn food at a random location not occupied by snake, biased away from borders early on."""
+        margin = self.get_spawn_margin()
+        x_min, x_max = 1 + margin, GRID_WIDTH - 2 - margin
+        y_min, y_max = 1 + margin, GRID_HEIGHT - 2 - margin
+        # Fallback to full range if margin collapses
+        if x_min >= x_max or y_min >= y_max:
+            x_min, x_max = 1, GRID_WIDTH - 2
+            y_min, y_max = 1, GRID_HEIGHT - 2
+
         while True:
-            x = random.randint(1, GRID_WIDTH - 2)
-            y = random.randint(1, GRID_HEIGHT - 2)
+            x = random.randint(x_min, x_max)
+            y = random.randint(y_min, y_max)
             if (x, y) not in self.snake:
                 return (x, y)
 
     def spawn_bonus(self):
         """Spawn bonus at a random free cell"""
+        margin = self.get_spawn_margin()
+        x_min, x_max = 1 + margin, GRID_WIDTH - 2 - margin
+        y_min, y_max = 1 + margin, GRID_HEIGHT - 2 - margin
+        if x_min >= x_max or y_min >= y_max:
+            x_min, x_max = 1, GRID_WIDTH - 2
+            y_min, y_max = 1, GRID_HEIGHT - 2
+
         while True:
-            x = random.randint(1, GRID_WIDTH - 2)
-            y = random.randint(1, GRID_HEIGHT - 2)
+            x = random.randint(x_min, x_max)
+            y = random.randint(y_min, y_max)
             if (x, y) not in self.snake and (x, y) != self.food:
                 return (x, y)
     
@@ -115,11 +140,23 @@ class SnakeGame:
         dx, dy = self.direction
         new_head = (head_x + dx, head_y + dy)
         
-        # Check wall collision
-        if (new_head[0] <= 0 or new_head[0] >= GRID_WIDTH - 1 or
-            new_head[1] <= 0 or new_head[1] >= GRID_HEIGHT - 1):
-            self.game_over = True
-            return
+        # Handle borders
+        if self.wrap_mode:
+            # Wrap around the play area (excluding border walls)
+            if new_head[0] <= 0:
+                new_head = (GRID_WIDTH - 2, new_head[1])
+            elif new_head[0] >= GRID_WIDTH - 1:
+                new_head = (1, new_head[1])
+            if new_head[1] <= 0:
+                new_head = (new_head[0], GRID_HEIGHT - 2)
+            elif new_head[1] >= GRID_HEIGHT - 1:
+                new_head = (new_head[0], 1)
+        else:
+            # Classic mode: hit a wall -> game over
+            if (new_head[0] <= 0 or new_head[0] >= GRID_WIDTH - 1 or
+                new_head[1] <= 0 or new_head[1] >= GRID_HEIGHT - 1):
+                self.game_over = True
+                return
         
         # Check self collision
         if new_head in self.snake:
@@ -182,7 +219,8 @@ class SnakeGame:
         print("╚" + "═" * (GRID_WIDTH - 2) + "╝")
         
         # Draw score
-        print(f"\nScore: {self.score}")
+        mode_label = "Wrap" if self.wrap_mode else "Classic"
+        print(f"\nScore: {self.score}    Mode: {mode_label}")
         
         if self.game_over:
             print("\n╔════════════════════╗")
@@ -194,7 +232,24 @@ class SnakeGame:
         """Main game loop"""
         print("🐍 SNAKE GAME 🐍")
         print("\nControls: w=up, s=down, a=left, d=right, q=quit")
-        print("Press any key to start (q to quit)...\n")
+        print("\nSelect mode: 1=Classic (walls end game), 2=Wrap (edges wrap). Press q to quit.")
+        mode_selected = False
+        while not mode_selected:
+            key = get_key()
+            if key == '1':
+                self.wrap_mode = False
+                mode_selected = True
+            elif key == '2':
+                self.wrap_mode = True
+                mode_selected = True
+            elif key == 'q':
+                return
+            time.sleep(0.05)
+
+        # Reset after mode choice to start fresh
+        self.reset_game()
+
+        print("\nPress any key to start (q to quit)...\n")
         # Wait for any key to begin; allow quitting with 'q'
         while True:
             key = get_key()
@@ -230,8 +285,10 @@ class SnakeGame:
                             self.next_direction = Direction.RIGHT
                         elif key == 'q':
                             return  # Exit the game
-                    
-                    time.sleep(0.1)
+
+                    # Gradually speed up as score increases
+                    step_delay = max(0.04, 0.1 - self.score * 0.0005)
+                    time.sleep(step_delay)
                 
                 # Final draw for game over
                 self.draw()
