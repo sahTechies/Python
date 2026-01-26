@@ -166,4 +166,9 @@ if __name__ == "__main__":
     game.run()
 #  why is this code not working
 #The code you provided for the Snake game appears to be mostly correct, but there is a small typo in the `update` method when calculating the new head position. The line:
-    
+    #How to fix the error
+        new_head = (head_x + dx, new_head_y := head_y + dy)
+#should be:
+#where to write new_head = (head_x + dx, new_head_y := head_y + dy)
+        new_head = (head_x + dx, head_y + dy)
+#This change removes the unnecessary assignment expression and correctly calculates the new head position. After making this
