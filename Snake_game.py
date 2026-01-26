@@ -122,7 +122,7 @@ class SnakeGame:
             print("\n╔════════════════════╗")
             print("║   GAME OVER! 💀    ║")
             print("╚════════════════════╝")
-            print("\nPress Ctrl+C and run the program again to play another game")
+            print("\nPress 'r' to restart or 'q' to quit")
     
     def run(self):
         """Main game loop"""
@@ -131,39 +131,52 @@ class SnakeGame:
         print("Press any key to start...\n")
         input()
         
-        move_counter = 0
-        
-        try:
-            while not self.game_over:
+        while True:  # Outer loop for restarting
+            move_counter = 0
+            
+            try:
+                while not self.game_over:
+                    self.draw()
+                    
+                    # Simple timing for movement
+                    move_counter += 1
+                    if move_counter >= 2:
+                        self.update()
+                        move_counter = 0
+                    
+                    # Get keyboard input
+                    key = get_key()
+                    if key:
+                        if key == 'w' and self.direction != Direction.DOWN:
+                            self.next_direction = Direction.UP
+                        elif key == 's' and self.direction != Direction.UP:
+                            self.next_direction = Direction.DOWN
+                        elif key == 'a' and self.direction != Direction.RIGHT:
+                            self.next_direction = Direction.LEFT
+                        elif key == 'd' and self.direction != Direction.LEFT:
+                            self.next_direction = Direction.RIGHT
+                        elif key == 'q':
+                            return  # Exit the game
+                    
+                    time.sleep(0.1)
+                
+                # Final draw for game over
                 self.draw()
                 
-                # Simple timing for movement
-                move_counter += 1
-                if move_counter >= 2:
-                    self.update()
-                    move_counter = 0
+                # Restart prompt
+                while True:
+                    restart_key = get_key()
+                    if restart_key:
+                        if restart_key == 'r':
+                            self.reset_game()
+                            break
+                        elif restart_key == 'q':
+                            return  # Exit the game
+                    time.sleep(0.1)
                 
-                # Get keyboard input
-                key = get_key()
-                if key:
-                    if key == 'w' and self.direction != Direction.DOWN:
-                        self.next_direction = Direction.UP
-                    elif key == 's' and self.direction != Direction.UP:
-                        self.next_direction = Direction.DOWN
-                    elif key == 'a' and self.direction != Direction.RIGHT:
-                        self.next_direction = Direction.LEFT
-                    elif key == 'd' and self.direction != Direction.LEFT:
-                        self.next_direction = Direction.RIGHT
-                    elif key == 'q':
-                        break
-                
-                time.sleep(0.1)
-            
-            # Final draw for game over
-            self.draw()
-            
-        except KeyboardInterrupt:
-            print("\n\nGame interrupted. Thanks for playing!")
+            except KeyboardInterrupt:
+                print("\n\nGame interrupted. Thanks for playing!")
+                return
 
 if __name__ == "__main__":
     game = SnakeGame()
