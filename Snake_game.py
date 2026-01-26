@@ -128,8 +128,15 @@ class SnakeGame:
         """Main game loop"""
         print("🐍 SNAKE GAME 🐍")
         print("\nControls: w=up, s=down, a=left, d=right, q=quit")
-        print("Press any key to start...\n")
-        input()
+        print("Press any key to start (q to quit)...\n")
+        # Wait for any key to begin; allow quitting with 'q'
+        while True:
+            key = get_key()
+            if key:
+                if key == 'q':
+                    return
+                break
+            time.sleep(0.05)
         
         while True:  # Outer loop for restarting
             move_counter = 0
