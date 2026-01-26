@@ -7,15 +7,50 @@ from collections import deque
 # Windows-compatible keyboard input
 if os.name == 'nt':
     import msvcrt
+
     def get_key():
-        if msvcrt.kbhit():
-            return msvcrt.getch().decode().lower()
-        return None
+        """Get a single key; supports arrows and WASD on Windows."""
+        if not msvcrt.kbhit():
+            return None
+
+        key = msvcrt.getch()
+        # Arrow keys come as a prefix byte then a code byte
+        if key in (b"\x00", b"\xe0"):
+            special = msvcrt.getch()
+            mapping = {
+                b"H": "up",    # Arrow up
+                b"P": "down",  # Arrow down
+                b"K": "left",  # Arrow left
+                b"M": "right", # Arrow right
+            }
+            return mapping.get(special)
+
+        try:
+            return key.decode().lower()
+        except UnicodeDecodeError:
+            return None
 else:
     import select
+
     def get_key():
+        """Get a single key; supports arrows and WASD on POSIX terminals."""
+        if not select.select([sys.stdin], [], [], 0)[0]:
+            return None
+
+        first = sys.stdin.read(1)
+        if first != "\x1b":
+            return first.lower()
+
+        # Attempt to parse escape sequence for arrows
         if select.select([sys.stdin], [], [], 0)[0]:
-            return sys.stdin.read(1).lower()
+            rest = sys.stdin.read(2)
+            mapping = {
+                "[A": "up",
+                "[B": "down",
+                "[D": "left",
+                "[C": "right",
+            }
+            return mapping.get(rest)
         return None
 
 # Constants
@@ -26,6 +61,7 @@ GRID_HEIGHT = 20
 SNAKE_HEAD = "●"
 SNAKE_BODY = "○"
 FOOD = "◆"
+BONUS = "★"
 EMPTY = " "
 BORDER = "█"
 
@@ -45,6 +81,9 @@ class SnakeGame:
         self.direction = Direction.RIGHT
         self.next_direction = Direction.RIGHT
         self.food = self.spawn_food()
+        self.bonus = None
+        self.bonus_timer = 0
+        self.next_bonus_score = 50
         self.score = 0
         self.game_over = False
     
@@ -54,6 +93,14 @@ class SnakeGame:
             x = random.randint(1, GRID_WIDTH - 2)
             y = random.randint(1, GRID_HEIGHT - 2)
             if (x, y) not in self.snake:
+                return (x, y)
+
+    def spawn_bonus(self):
+        """Spawn bonus at a random free cell"""
+        while True:
+            x = random.randint(1, GRID_WIDTH - 2)
+            y = random.randint(1, GRID_HEIGHT - 2)
+            if (x, y) not in self.snake and (x, y) != self.food:
                 return (x, y)
     
     def update(self):
@@ -86,9 +133,26 @@ class SnakeGame:
         if new_head == self.food:
             self.score += 10
             self.food = self.spawn_food()
+            # Trigger bonus spawn every 50 points
+            if self.score >= self.next_bonus_score and self.bonus is None:
+                self.bonus = self.spawn_bonus()
+                self.bonus_timer = 0
         else:
             # Remove tail if no food eaten
             self.snake.pop()
+
+        # Check bonus collision
+        if self.bonus and new_head == self.bonus:
+            self.score += 100
+            self.bonus = None
+            self.next_bonus_score += 50
+
+        # Bonus lifetime handling
+        if self.bonus:
+            self.bonus_timer += 1
+            if self.bonus_timer >= 120:  # roughly 12 seconds at 10 FPS
+                self.bonus = None
+                self.next_bonus_score += 50
     
     def draw(self):
         """Draw game elements to terminal"""
@@ -103,6 +167,8 @@ class SnakeGame:
             for x in range(1, GRID_WIDTH - 1):
                 if (x, y) == self.food:
                     row += FOOD
+                elif self.bonus and (x, y) == self.bonus:
+                    row += BONUS
                 elif (x, y) == self.snake[0]:
                     row += SNAKE_HEAD
                 elif (x, y) in self.snake:
@@ -154,13 +220,13 @@ class SnakeGame:
                     # Get keyboard input
                     key = get_key()
                     if key:
-                        if key == 'w' and self.direction != Direction.DOWN:
+                        if key in ('w', 'up') and self.direction != Direction.DOWN:
                             self.next_direction = Direction.UP
-                        elif key == 's' and self.direction != Direction.UP:
+                        elif key in ('s', 'down') and self.direction != Direction.UP:
                             self.next_direction = Direction.DOWN
-                        elif key == 'a' and self.direction != Direction.RIGHT:
+                        elif key in ('a', 'left') and self.direction != Direction.RIGHT:
                             self.next_direction = Direction.LEFT
-                        elif key == 'd' and self.direction != Direction.LEFT:
+                        elif key in ('d', 'right') and self.direction != Direction.LEFT:
                             self.next_direction = Direction.RIGHT
                         elif key == 'q':
                             return  # Exit the game
