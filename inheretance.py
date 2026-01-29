@@ -6,9 +6,9 @@ class Person:
   def printname(self):
     print(self.firstname, self.lastname)
 
-#Use the Person class to create an object, and then execute the printname method:
+class Student(Person):
+  pass
 
-x = Person("John", "Doe")
-y = Person("Hello", "good")
-y.printname()
+x = Student("Mike", "Olsen")
 x.printname()
+
